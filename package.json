@@ -1,0 +1,12 @@
+{
+  "name": "personnel-system",
+  "version": "1.0.0",
+  "description": "人员情况管理系统",
+  "main": "cloud_server.js",
+  "scripts": {
+    "start": "node cloud_server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
