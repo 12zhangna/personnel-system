@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: personnel-system
+    runtime: node
+    plan: free
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    autoDeploy: true
+    healthCheckPath: "/"
+    envVars:
+      - key: NODE_ENV
+        value: production
