@@ -1,0 +1,13 @@
+node_modules/
+data.json
+_sync_*
+_share_*
+_debug*
+_verify*
+_batch*
+_base*
+_manifest*
+_*.ndjson
+_*.html
+_upload_*
+*.tmp
