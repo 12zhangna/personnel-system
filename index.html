@@ -285,8 +285,8 @@ function momHTML(c){if(c.dir==="new")return'<span class="chg-new">新增</span>'
 function stats(data,month){if(!data)return{total:0,active:0,exited:0,entries:0,exits:0,net:0};const t=data.employees.length;const allEx=data.employees.filter(e=>e.exitDate).length;const mEx=month?data.employees.filter(e=>e.exitDate&&String(e.exitDate).startsWith(month)).length:allEx;let ent,ext;if(month){const mEnt=data.employees.filter(e=>e.joinDate&&String(e.joinDate).startsWith(month)).length;ent=mEnt+data.entries.filter(e=>!e.joinDate||String(e.joinDate).startsWith(month)).length;ext=mEx+data.exits.filter(e=>!e.exitDate||String(e.exitDate).startsWith(month)).length}else{ent=data.entries.length;ext=data.exits.length}return{total:t,active:t-allEx,exited:mEx,entries:ent,exits:ext,net:ent-ext}}
 function autoEntries(){const data=curData();const m=state.currentMonth;return data.employees.filter(e=>e.joinDate&&String(e.joinDate).startsWith(m)).map(e=>({status:"已入职",name:e.name,contact:"",gender:"",position:"",level:"",dept:e.dept1,entity:"",leader:"",offerDate:"",joinDate:e.joinDate,contact2:"",location:e.city,_auto:true}))}
 function autoExits(){const data=curData();const m=state.currentMonth;return data.employees.filter(e=>e.exitDate&&String(e.exitDate).startsWith(m)).map(e=>({dept1:e.dept1,dept2:e.dept2,shop:e.shop,brand:e.brand,name:e.name,city:e.city,exitDate:e.exitDate,joinDate:e.joinDate,_auto:true}))}
-function mergedEntries(){return[...autoEntries(),...curData().entries]}
-function mergedExits(){return[...autoExits(),...curData().exits]}
+function mergedEntries(){const m=state.currentMonth;return[...autoEntries(),...curData().entries.filter(e=>!e.joinDate||String(e.joinDate).startsWith(m))]}
+function mergedExits(){const m=state.currentMonth;return[...autoExits(),...curData().exits.filter(e=>!e.exitDate||String(e.exitDate).startsWith(m))]}
 function cityDist(data){if(!data)return CITIES.map(c=>({c,n:0}));const nl=data.employees.filter(e=>!isLoadingDept(e.dept1));return CITIES.map(c=>({c,n:nl.filter(e=>e.city===c).length}))}
 function catDist(data){if(!data)return CATS.map(c=>({c,n:0}));return CATS.map(c=>({c,n:data.employees.filter(e=>getCat(e.dept1)===c).length}))}
 function deptCounts(data,city){if(!data)return[];const depts=getDeptList();const noDept=data.employees.filter(e=>!e.dept1).length;const allDepts=noDept>0?[...depts,"未分类"]:depts;return allDepts.map(d=>{let f=data.employees.filter(e=>d==="未分类"?!e.dept1:e.dept1===d);if(city)f=f.filter(e=>e.city===city);const n=f.length,ex=f.filter(e=>e.exitDate).length;return{dept:d,n,exited:ex,active:n-ex}})}
@@ -436,14 +436,14 @@ if(col.type==="date")return`<input type="date" class="edit-input" value="${v}" o
 return`<input type="text" class="edit-input" value="${v}" onchange="updRow('entries',${idx},'${col.key}',this.value)" style="width:${col.w}px">`;
 }
 function renderEntryTable(){
-const auto=autoEntries();const manual=curData().entries;
+const auto=autoEntries();const m=state.currentMonth;const manual=curData().entries;const mf=manual.map((e,mi)=>({e:e,mi:mi})).filter(({e})=>!e.joinDate||String(e.joinDate).startsWith(m));
 let html="<thead><tr><th class='idx'>#</th>";
 ENTRY_COLS.forEach(c=>html+=`<th style="min-width:${c.w}px">${c.label}</th>`);
 html+="<th></th></tr></thead><tbody>";
-if(auto.length===0&&manual.length===0)html+='<tr><td colspan="15" class="empty">暂无数据。当月入职人员会从「数据录入」中自动同步（填写入职时间为当月即可）</td></tr>';
+if(auto.length===0&&mf.length===0)html+='<tr><td colspan="15" class="empty">暂无数据。当月入职人员会从「数据录入」中自动同步（填写入职时间为当月即可）</td></tr>';
 let idx=0;
 auto.forEach(e=>{html+=`<tr style="background:#ecfdf5"><td class="idx">${++idx}</td>`;ENTRY_COLS.forEach(c=>{const v=e[c.key]||"";if(c.key==="status")html+=`<td style="color:#059669;font-weight:600">${v||"—"}</td>`;else html+=`<td style="color:#059669">${v||"—"}</td>`});html+=`<td style="text-align:center;color:#059669;font-size:10px;font-weight:600">自动</td></tr>`});
-manual.forEach((e,mi)=>{html+=`<tr><td class="idx">${++idx}</td>`;ENTRY_COLS.forEach(c=>html+=`<td>${makeEntryCell(c,mi)}</td>`);html+=`<td class="row-del" onclick="delRow('entries',${mi})">×</td></tr>`});
+mf.forEach(({e,mi})=>{html+=`<tr><td class="idx">${++idx}</td>`;ENTRY_COLS.forEach(c=>html+=`<td>${makeEntryCell(c,mi)}</td>`);html+=`<td class="row-del" onclick="delRow('entries',${mi})">×</td></tr>`});
 html+="</tbody>";document.getElementById("entryTable").innerHTML=html;renderEntrySummary();
 }
 function renderEntrySummary(){
@@ -462,14 +462,14 @@ if(col.type==="date")return`<input type="date" class="edit-input" value="${v}" o
 return`<input type="text" class="edit-input" value="${v}" onchange="updRow('exits',${idx},'${col.key}',this.value)" style="width:${col.w}px">`;
 }
 function renderExitTable(){
-const auto=autoExits();const manual=curData().exits;
+const auto=autoExits();const m=state.currentMonth;const manual=curData().exits;const mf=manual.map((e,mi)=>({e:e,mi:mi})).filter(({e})=>!e.exitDate||String(e.exitDate).startsWith(m));
 let html="<thead><tr><th class='idx'>#</th>";
 EXIT_COLS.forEach(c=>html+=`<th style="min-width:${c.w}px">${c.label}</th>`);
 html+="<th></th></tr></thead><tbody>";
-if(auto.length===0&&manual.length===0)html+='<tr><td colspan="10" class="empty">暂无数据。当月离职人员会从「数据录入」中自动同步（填写离职日期为当月即可）</td></tr>';
+if(auto.length===0&&mf.length===0)html+='<tr><td colspan="10" class="empty">暂无数据。当月离职人员会从「数据录入」中自动同步（填写离职日期为当月即可）</td></tr>';
 let idx=0;
 auto.forEach(e=>{html+=`<tr style="background:#fef2f2"><td class="idx">${++idx}</td>`;EXIT_COLS.forEach(c=>html+=`<td style="color:#dc2626">${e[c.key]||"—"}</td>`);html+=`<td style="text-align:center;color:#dc2626;font-size:10px;font-weight:600">自动</td></tr>`});
-manual.forEach((e,mi)=>{html+=`<tr><td class="idx">${++idx}</td>`;EXIT_COLS.forEach(c=>html+=`<td>${makeExitCell(c,mi)}</td>`);html+=`<td class="row-del" onclick="delRow('exits',${mi})">×</td></tr>`});
+mf.forEach(({e,mi})=>{html+=`<tr><td class="idx">${++idx}</td>`;EXIT_COLS.forEach(c=>html+=`<td>${makeExitCell(c,mi)}</td>`);html+=`<td class="row-del" onclick="delRow('exits',${mi})">×</td></tr>`});
 html+="</tbody>";document.getElementById("exitTable").innerHTML=html;renderExitSummary();
 }
 function renderExitSummary(){
