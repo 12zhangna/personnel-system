@@ -117,6 +117,7 @@ body.readonly .readonly-hint{display:block!important}
 <button class="tab" data-t="exit">离职明细</button>
 <button class="tab" data-t="city">城市明细</button>
 <button class="tab" data-t="loading">Loading分析</button>
+<button class="tab" data-t="threemonth">前三月对比</button>
 <button class="tab" data-t="settings">部门设置</button>
 </div>
 <div class="content">
@@ -185,6 +186,22 @@ body.readonly .readonly-hint{display:block!important}
 </div>
 <div class="chart-row full">
 <div class="card"><div class="card-title">Loading环比分析 <span class="sub" id="loadingMomSub"></span></div><div class="table-wrap" id="loadingMomTable"></div></div>
+</div>
+</div>
+<div class="tab-panel" id="p-threemonth">
+<div class="card" style="margin-bottom:16px"><div class="card-title">KPI对比 <span class="sub" id="tmKpiSub"></span></div><div class="table-wrap" id="tmKpiTable"></div></div>
+<div class="chart-row">
+<div class="card"><div class="card-title">城市分布对比</div><div class="chart-wrap"><canvas id="tmCityChart"></canvas></div></div>
+<div class="card"><div class="card-title">前中后台对比</div><div class="chart-wrap"><canvas id="tmCatChart"></canvas></div></div>
+</div>
+<div class="chart-row full">
+<div class="card"><div class="card-title">部门在岗人数对比</div><div class="table-wrap" id="tmDeptTable"></div></div>
+</div>
+<div class="chart-row full">
+<div class="card" style="border-left:4px solid #8b5cf6"><div class="card-title">Loading分析对比 <span class="sub" id="tmLoadingSub"></span></div><div class="table-wrap" id="tmLoadingTable"></div></div>
+</div>
+<div class="chart-row full">
+<div class="card"><div class="card-title">入职离职对比</div><div class="chart-wrap"><canvas id="tmEntryExitChart"></canvas></div></div>
 </div>
 </div>
 <div class="tab-panel" id="p-settings">
@@ -524,6 +541,60 @@ let mhtml="<table><thead><tr><th>指标</th><th>本月</th><th>上月</th><th>�
 rows.forEach(r=>{const c=mom(r.cur,r.prev);const pctStr=c.pct!==null&&c.pct!==0?(c.pct>0?"+":"")+c.pct.toFixed(1)+"%":c.dir==="flat"?"0%":c.dir==="new"?"—":"";mhtml+=`<tr><td>${r.label}</td><td style="text-align:center;font-weight:600">${r.cur}</td><td style="text-align:center;color:var(--g400)">${r.prev!==null?r.prev:"—"}</td><td>${momHTML(c)}</td><td style="text-align:center">${pctStr}</td></tr>`});
 mhtml+="</tbody></table>";document.getElementById("loadingMomTable").innerHTML=mhtml;
 }
+function renderThreeMonth(){
+const ms=availMonths().slice(-3);
+document.getElementById("tmKpiSub").textContent=ms.length?`（${ms.join(" / ")}）`:"";
+if(ms.length<1){document.getElementById("tmKpiTable").innerHTML='<table><tr><td class="empty">需要至少一个月数据</td></tr></table>';return}
+const allStats=ms.map(m=>stats(state.months[m],m));
+let kpiHtml="<table><thead><tr><th>指标</th>";
+ms.forEach(m=>kpiHtml+=`<th style="text-align:center">${m}</th>`);
+if(ms.length>=2)kpiHtml+='<th style="text-align:center">环比变化</th>';
+kpiHtml+="</tr></thead><tbody>";
+const metrics=[{label:"总人数",key:"total"},{label:"在职人数",key:"active"},{label:"本月入职",key:"entries"},{label:"本月离职",key:"exits"},{label:"净增减",key:"net"}];
+metrics.forEach(mc=>{kpiHtml+=`<tr><td>${mc.label}</td>`;allStats.forEach(s=>{const v=mc.key==="net"?(s[mc.key]>=0?"+"+s[mc.key]:s[mc.key]):s[mc.key];kpiHtml+=`<td style="text-align:center;font-weight:600">${v}</td>`});if(ms.length>=2){const cur=allStats[allStats.length-1][mc.key],prev=allStats[allStats.length-2][mc.key];kpiHtml+=`<td style="text-align:center">${momHTML(mom(cur,prev))}</td>`}kpiHtml+="</tr>"});
+kpiHtml+="</tbody></table>";
+document.getElementById("tmKpiTable").innerHTML=kpiHtml;
+const ctx1=document.getElementById("tmCityChart");if(ctx1){if(charts.tmCity)charts.tmCity.destroy();
+const colors=["#2563eb","#10b981","#f59e0b"];
+const cityData=CITIES.map((c,ci)=>({label:c,data:ms.map(m=>{const d=state.months[m];return d.employees.filter(e=>!isLoadingDept(e.dept1)&&e.city===c).length}),backgroundColor:colors[ci]}));
+const loadingData={label:"Loading",data:ms.map(m=>state.months[m].employees.filter(e=>isLoadingDept(e.dept1)).length),backgroundColor:"#8b5cf6"};
+const otherData={label:"其他",data:ms.map(m=>{const d=state.months[m];const nl=d.employees.filter(e=>!isLoadingDept(e.dept1));const known=CITIES.reduce((s,c)=>s+nl.filter(e=>e.city===c).length,0);return nl.length-known}),backgroundColor:"#9ca3af"};
+charts.tmCity=new Chart(ctx1,{type:"bar",data:{labels:ms,datasets:[...cityData,loadingData,otherData]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{boxWidth:12,font:{size:10}}}},scales:{x:{},y:{beginAtZero:true,ticks:{precision:0}}}}})}
+const ctx2=document.getElementById("tmCatChart");if(ctx2){if(charts.tmCat)charts.tmCat.destroy();
+const catData=CATS.map((c,ci)=>({label:c,data:ms.map(m=>state.months[m].employees.filter(e=>getCat(e.dept1)===c).length),backgroundColor:["#3b82f6","#8b5cf6","#9ca3af"][ci]}));
+charts.tmCat=new Chart(ctx2,{type:"bar",data:{labels:ms,datasets:catData},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{boxWidth:12,font:{size:10}}}},scales:{x:{},y:{beginAtZero:true,ticks:{precision:0}}}}})}
+const depts=getDeptList();
+let deptHtml="<table><thead><tr><th>一级部门</th>";
+ms.forEach(m=>deptHtml+=`<th style="text-align:center">${m}</th>`);
+if(ms.length>=2)deptHtml+='<th style="text-align:center">环比</th>';
+deptHtml+="</tr></thead><tbody>";
+depts.forEach(dp=>{
+const vals=ms.map(m=>{const dc=deptCounts(state.months[m]);const r=dc.find(x=>x.dept===dp);return r?r.n:0});
+if(vals.every(v=>v===0))return;
+deptHtml+=`<tr><td>${dp}</td>`;
+vals.forEach(v=>deptHtml+=`<td style="text-align:center">${v}</td>`);
+if(ms.length>=2){const c=mom(vals[vals.length-1],vals[vals.length-2]);deptHtml+=`<td style="text-align:center">${momHTML(c)}</td>`}
+deptHtml+="</tr>"});
+const totals=ms.map(m=>state.months[m].employees.length);
+deptHtml+=`<tr class="total"><td>合计</td>`;
+totals.forEach(t=>deptHtml+=`<td style="text-align:center">${t}</td>`);
+if(ms.length>=2){const c=mom(totals[totals.length-1],totals[totals.length-2]);deptHtml+=`<td style="text-align:center">${momHTML(c)}</td>`}
+deptHtml+="</tr></tbody></table>";
+document.getElementById("tmDeptTable").innerHTML=deptHtml;
+const loadingStats=ms.map(m=>{const d=state.months[m];const le=d.employees.filter(e=>isLoadingDept(e.dept1));return{total:le.length,active:le.filter(e=>!e.exitDate).length,entries:le.filter(e=>e.joinDate&&String(e.joinDate).startsWith(m)).length,exits:le.filter(e=>e.exitDate&&String(e.exitDate).startsWith(m)).length}});
+document.getElementById("tmLoadingSub").textContent=ms.length?`（${ms.join(" / ")}）`:"";
+let lHtml="<table><thead><tr><th>指标</th>";
+ms.forEach(m=>lHtml+=`<th style="text-align:center">${m}</th>`);
+if(ms.length>=2)lHtml+='<th style="text-align:center">环比</th>';
+lHtml+="</tr></thead><tbody>";
+const lMetrics=[{label:"Loading总人数",key:"total"},{label:"在职人数",key:"active"},{label:"当月入职",key:"entries"},{label:"当月离职",key:"exits"}];
+lMetrics.forEach(mc=>{lHtml+=`<tr><td>${mc.label}</td>`;loadingStats.forEach(d=>{lHtml+=`<td style="text-align:center;font-weight:600">${d[mc.key]}</td>`});if(ms.length>=2){const cur=loadingStats[loadingStats.length-1][mc.key],prev=loadingStats[loadingStats.length-2][mc.key];lHtml+=`<td style="text-align:center">${momHTML(mom(cur,prev))}</td>`}lHtml+="</tr>"});
+lHtml+="</tbody></table>";
+document.getElementById("tmLoadingTable").innerHTML=lHtml;
+const ctx3=document.getElementById("tmEntryExitChart");if(ctx3){if(charts.tmEntryExit)charts.tmEntryExit.destroy();
+const entData=ms.map(m=>stats(state.months[m],m).entries);
+const extData=ms.map(m=>stats(state.months[m],m).exits);
+charts.tmEntryExit=new Chart(ctx3,{type:"bar",data:{labels:ms,datasets:[{label:"入职",data:entData,backgroundColor:"#10b981"},{label:"离职",data:extData,backgroundColor:"#ef4444"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{boxWidth:12,font:{size:10}}}},scales:{x:{},y:{beginAtZero:true,ticks:{precision:0}}}}})}
 function renderSettings(){
 let html="<table><thead><tr><th>部门名称</th><th>属性</th><th></th></tr></thead><tbody>";
 state.deptMapping.forEach((m,idx)=>{html+=`<tr><td><input type="text" class="edit-input" value="${m.dept}" onchange="updMap(${idx},'dept',this.value)" style="width:200px"></td><td><select class="edit-input" onchange="updMap(${idx},'cat',this.value)">${CATS.map(c=>`<option value="${c}"${m.cat===c?" selected":""}>${c}</option>`).join("")}</select></td><td class="row-del" onclick="delMap(${idx})">×</td></tr>`});
@@ -538,6 +609,7 @@ else if(active==="entry")renderEntryTable();
 else if(active==="exit")renderExitTable();
 else if(active==="city")renderCityView();
 else if(active==="loading")renderLoadingView();
+else if(active==="threemonth")renderThreeMonth();
 else if(active==="settings")renderSettings();
 }
 function addRow(type){const data=curData();const cols=type==="employees"?EMP_COLS:type==="entries"?ENTRY_COLS:EXIT_COLS;const empty={};cols.forEach(c=>empty[c.key]="");if(type==="entries")empty.status="已入职";if(type==="exits")empty.city="上海";data[type].push(empty);save();renderAll()}
@@ -684,8 +756,8 @@ async function shareSystem(){
 const data={months:state.months,currentMonth:state.currentMonth,deptMapping:state.deptMapping};
 const dataStr=JSON.stringify(data).replace(/</g,"\\u003c");
 const clone=document.documentElement.cloneNode(true);
-["kpiRow","dashLoadingKpi","deptActiveTable","crossTab","momTable","empTable","entryTable","entrySummary","exitTable","exitSummary","cityTable","citySummary","loadingKpiRow","loadingTable","loadingMoMTable","deptMapTable","monthInfo"].forEach(id=>{const el=clone.querySelector("#"+id);if(el)el.innerHTML=""});
-["cityChart","catChart","trendChart","dashLoadingChart","loadingCityChart","loadingDeptChart"].forEach(id=>{const el=clone.querySelector("#"+id);if(el){const nc=document.createElement("canvas");nc.id=id;el.parentNode.replaceChild(nc,el)}});
+["kpiRow","dashLoadingKpi","deptActiveTable","crossTab","momTable","empTable","entryTable","entrySummary","exitTable","exitSummary","cityTable","citySummary","loadingKpiRow","loadingTable","loadingMoMTable","deptMapTable","monthInfo","tmKpiTable","tmDeptTable","tmLoadingTable"].forEach(id=>{const el=clone.querySelector("#"+id);if(el)el.innerHTML=""});
+["cityChart","catChart","trendChart","dashLoadingChart","loadingCityChart","loadingDeptChart","tmCityChart","tmCatChart","tmEntryExitChart"].forEach(id=>{const el=clone.querySelector("#"+id);if(el){const nc=document.createElement("canvas");nc.id=id;el.parentNode.replaceChild(nc,el)}});
 clone.querySelectorAll(".toast").forEach(e=>e.remove());
 const mb=clone.querySelector("#modalBg");if(mb)mb.className="modal-bg";
 clone.querySelectorAll("script#embedded-data").forEach(s=>s.remove());
