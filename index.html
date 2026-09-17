@@ -554,53 +554,55 @@ const metrics=[{label:"总人数",key:"total"},{label:"在职人数",key:"active
 metrics.forEach(mc=>{kpiHtml+=`<tr><td>${mc.label}</td>`;allStats.forEach(s=>{const v=mc.key==="net"?(s[mc.key]>=0?"+"+s[mc.key]:s[mc.key]):s[mc.key];kpiHtml+=`<td style="text-align:center;font-weight:600">${v}</td>`});if(ms.length>=2){const cur=allStats[allStats.length-1][mc.key],prev=allStats[allStats.length-2][mc.key];kpiHtml+=`<td style="text-align:center">${momHTML(mom(cur,prev))}</td>`}kpiHtml+="</tr>"});
 kpiHtml+="</tbody></table>";
 document.getElementById("tmKpiTable").innerHTML=kpiHtml;
-const ctx1=document.getElementById("tmCityChart");if(ctx1){if(charts.tmCity)charts.tmCity.destroy();
-const colors=["#2563eb","#10b981","#f59e0b"];
-const cityData=CITIES.map((c,ci)=>({label:c,data:ms.map(m=>{const d=state.months[m];return d.employees.filter(e=>!isLoadingDept(e.dept1)&&e.city===c).length}),backgroundColor:colors[ci]}));
-const loadingData={label:"Loading",data:ms.map(m=>state.months[m].employees.filter(e=>isLoadingDept(e.dept1)).length),backgroundColor:"#8b5cf6"};
-const otherData={label:"其他",data:ms.map(m=>{const d=state.months[m];const nl=d.employees.filter(e=>!isLoadingDept(e.dept1));const known=CITIES.reduce((s,c)=>s+nl.filter(e=>e.city===c).length,0);return nl.length-known}),backgroundColor:"#9ca3af"};
-charts.tmCity=new Chart(ctx1,{type:"bar",data:{labels:ms,datasets:[...cityData,loadingData,otherData]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{boxWidth:12,font:{size:10}}}},scales:{x:{},y:{beginAtZero:true,ticks:{precision:0}}}}})}
-const ctx2=document.getElementById("tmCatChart");if(ctx2){if(charts.tmCat)charts.tmCat.destroy();
-const catData=CATS.map((c,ci)=>({label:c,data:ms.map(m=>state.months[m].employees.filter(e=>getCat(e.dept1)===c).length),backgroundColor:["#3b82f6","#8b5cf6","#9ca3af"][ci]}));
-charts.tmCat=new Chart(ctx2,{type:"bar",data:{labels:ms,datasets:catData},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{boxWidth:12,font:{size:10}}}},scales:{x:{},y:{beginAtZero:true,ticks:{precision:0}}}}})}
-const depts=getDeptList();
-let deptHtml="<table><thead><tr><th>一级部门</th>";
-ms.forEach(m=>deptHtml+=`<th style="text-align:center">${m}</th>`);
+var ctx1=document.getElementById("tmCityChart");if(ctx1){if(charts.tmCity)charts.tmCity.destroy();
+var colors=["#2563eb","#10b981","#f59e0b"];
+var cityData=CITIES.map(function(c,ci){return{label:c,data:ms.map(function(m){var d=state.months[m];return d.employees.filter(function(e){return !isLoadingDept(e.dept1)&&e.city===c}).length}),backgroundColor:colors[ci]}});
+var loadingData={label:"Loading",data:ms.map(function(m){return state.months[m].employees.filter(function(e){return isLoadingDept(e.dept1)}).length}),backgroundColor:"#8b5cf6"};
+var otherData={label:"其他",data:ms.map(function(m){var d=state.months[m];var nl=d.employees.filter(function(e){return !isLoadingDept(e.dept1)});var known=CITIES.reduce(function(s,c){return s+nl.filter(function(e){return e.city===c}).length},0);return nl.length-known}),backgroundColor:"#9ca3af"};
+charts.tmCity=new Chart(ctx1,{type:"bar",data:{labels:ms,datasets:[cityData[0],cityData[1],cityData[2],loadingData,otherData]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{boxWidth:12,font:{size:10}}}},scales:{x:{},y:{beginAtZero:true,ticks:{precision:0}}}}})};
+var ctx2=document.getElementById("tmCatChart");if(ctx2){if(charts.tmCat)charts.tmCat.destroy();
+var catData=CATS.map(function(c,ci){return{label:c,data:ms.map(function(m){return state.months[m].employees.filter(function(e){return getCat(e.dept1)===c}).length}),backgroundColor:["#3b82f6","#8b5cf6","#9ca3af"][ci]}});
+charts.tmCat=new Chart(ctx2,{type:"bar",data:{labels:ms,datasets:catData},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{boxWidth:12,font:{size:10}}}},scales:{x:{},y:{beginAtZero:true,ticks:{precision:0}}}}})};
+var depts=getDeptList();
+var deptHtml="<table><thead><tr><th>一级部门</th>";
+ms.forEach(function(m){deptHtml+='<th style="text-align:center">'+m+'</th>'});
 if(ms.length>=2)deptHtml+='<th style="text-align:center">环比</th>';
 deptHtml+="</tr></thead><tbody>";
-depts.forEach(dp=>{
-const vals=ms.map(m=>{const dc=deptCounts(state.months[m]);const r=dc.find(x=>x.dept===dp);return r?r.n:0});
-if(vals.every(v=>v===0))return;
-deptHtml+=`<tr><td>${dp}</td>`;
-vals.forEach(v=>deptHtml+=`<td style="text-align:center">${v}</td>`);
-if(ms.length>=2){const c=mom(vals[vals.length-1],vals[vals.length-2]);deptHtml+=`<td style="text-align:center">${momHTML(c)}</td>`}
+depts.forEach(function(dp){
+var vals=ms.map(function(m){var dc=deptCounts(state.months[m]);var r=dc.find(function(x){return x.dept===dp});return r?r.n:0});
+if(vals.every(function(v){return v===0}))return;
+deptHtml+='<tr><td>'+dp+'</td>';
+vals.forEach(function(v){deptHtml+='<td style="text-align:center">'+v+'</td>'});
+if(ms.length>=2){var c=mom(vals[vals.length-1],vals[vals.length-2]);deptHtml+='<td style="text-align:center">'+momHTML(c)+'</td>'}
 deptHtml+="</tr>"});
-const totals=ms.map(m=>state.months[m].employees.length);
-deptHtml+=`<tr class="total"><td>合计</td>`;
-totals.forEach(t=>deptHtml+=`<td style="text-align:center">${t}</td>`);
-if(ms.length>=2){const c=mom(totals[totals.length-1],totals[totals.length-2]);deptHtml+=`<td style="text-align:center">${momHTML(c)}</td>`}
+var totals=ms.map(function(m){return state.months[m].employees.length});
+deptHtml+='<tr class="total"><td>合计</td>';
+totals.forEach(function(t){deptHtml+='<td style="text-align:center">'+t+'</td>'});
+if(ms.length>=2){var c=mom(totals[totals.length-1],totals[totals.length-2]);deptHtml+='<td style="text-align:center">'+momHTML(c)+'</td>'}
 deptHtml+="</tr></tbody></table>";
 document.getElementById("tmDeptTable").innerHTML=deptHtml;
-const loadingStats=ms.map(m=>{const d=state.months[m];const le=d.employees.filter(e=>isLoadingDept(e.dept1));return{total:le.length,active:le.filter(e=>!e.exitDate).length,entries:le.filter(e=>e.joinDate&&String(e.joinDate).startsWith(m)).length,exits:le.filter(e=>e.exitDate&&String(e.exitDate).startsWith(m)).length}});
-document.getElementById("tmLoadingSub").textContent=ms.length?`（${ms.join(" / ")}）`:"";
-let lHtml="<table><thead><tr><th>指标</th>";
-ms.forEach(m=>lHtml+=`<th style="text-align:center">${m}</th>`);
+var loadingStats=ms.map(function(m){var d=state.months[m];var le=d.employees.filter(function(e){return isLoadingDept(e.dept1)});return{total:le.length,active:le.filter(function(e){return !e.exitDate}).length,entries:le.filter(function(e){return e.joinDate&&String(e.joinDate).startsWith(m)}).length,exits:le.filter(function(e){return e.exitDate&&String(e.exitDate).startsWith(m)}).length}});
+document.getElementById("tmLoadingSub").textContent=ms.length?("（"+ms.join(" / ")+"）"):"";
+var lHtml="<table><thead><tr><th>指标</th>";
+ms.forEach(function(m){lHtml+='<th style="text-align:center">'+m+'</th>'});
 if(ms.length>=2)lHtml+='<th style="text-align:center">环比</th>';
 lHtml+="</tr></thead><tbody>";
-const lMetrics=[{label:"Loading总人数",key:"total"},{label:"在职人数",key:"active"},{label:"当月入职",key:"entries"},{label:"当月离职",key:"exits"}];
-lMetrics.forEach(mc=>{lHtml+=`<tr><td>${mc.label}</td>`;loadingStats.forEach(d=>{lHtml+=`<td style="text-align:center;font-weight:600">${d[mc.key]}</td>`});if(ms.length>=2){const cur=loadingStats[loadingStats.length-1][mc.key],prev=loadingStats[loadingStats.length-2][mc.key];lHtml+=`<td style="text-align:center">${momHTML(mom(cur,prev))}</td>`}lHtml+="</tr>"});
+var lMetrics=[{label:"Loading总人数",key:"total"},{label:"在职人数",key:"active"},{label:"当月入职",key:"entries"},{label:"当月离职",key:"exits"}];
+lMetrics.forEach(function(mc){lHtml+='<tr><td>'+mc.label+'</td>';loadingStats.forEach(function(d){lHtml+='<td style="text-align:center;font-weight:600">'+d[mc.key]+'</td>'});if(ms.length>=2){var cur=loadingStats[loadingStats.length-1][mc.key];var prev=loadingStats[loadingStats.length-2][mc.key];lHtml+='<td style="text-align:center">'+momHTML(mom(cur,prev))+'</td>'}lHtml+="</tr>"});
 lHtml+="</tbody></table>";
 document.getElementById("tmLoadingTable").innerHTML=lHtml;
-const ctx3=document.getElementById("tmEntryExitChart");if(ctx3){if(charts.tmEntryExit)charts.tmEntryExit.destroy();
-const entData=ms.map(m=>stats(state.months[m],m).entries);
-const extData=ms.map(m=>stats(state.months[m],m).exits);
-charts.tmEntryExit=new Chart(ctx3,{type:"bar",data:{labels:ms,datasets:[{label:"入职",data:entData,backgroundColor:"#10b981"},{label:"离职",data:extData,backgroundColor:"#ef4444"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{boxWidth:12,font:{size:10}}}},scales:{x:{},y:{beginAtZero:true,ticks:{precision:0}}}}})}
+var ctx3=document.getElementById("tmEntryExitChart");if(ctx3){if(charts.tmEntryExit)charts.tmEntryExit.destroy();
+var entData=ms.map(function(m){return stats(state.months[m],m).entries});
+var extData=ms.map(function(m){return stats(state.months[m],m).exits});
+charts.tmEntryExit=new Chart(ctx3,{type:"bar",data:{labels:ms,datasets:[{label:"入职",data:entData,backgroundColor:"#10b981"},{label:"离职",data:extData,backgroundColor:"#ef4444"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{boxWidth:12,font:{size:10}}}},scales:{x:{},y:{beginAtZero:true,ticks:{precision:0}}}}})};
+}
 function renderSettings(){
 let html="<table><thead><tr><th>部门名称</th><th>属性</th><th></th></tr></thead><tbody>";
 state.deptMapping.forEach((m,idx)=>{html+=`<tr><td><input type="text" class="edit-input" value="${m.dept}" onchange="updMap(${idx},'dept',this.value)" style="width:200px"></td><td><select class="edit-input" onchange="updMap(${idx},'cat',this.value)">${CATS.map(c=>`<option value="${c}"${m.cat===c?" selected":""}>${c}</option>`).join("")}</select></td><td class="row-del" onclick="delMap(${idx})">×</td></tr>`});
 html+="</tbody></table>";document.getElementById("deptMapTable").innerHTML=html;
 }
 function renderAll(){
+try{
 const ms=availMonths();document.getElementById("monthInfo").textContent=ms.length?"已有数据: "+ms.join(" | "):"";
 const active=document.querySelector(".tab.active").dataset.t;
 if(active==="dashboard")renderDashboard();
@@ -611,6 +613,7 @@ else if(active==="city")renderCityView();
 else if(active==="loading")renderLoadingView();
 else if(active==="threemonth")renderThreeMonth();
 else if(active==="settings")renderSettings();
+}catch(e){console.error("renderAll error:",e);toast("渲染出错: "+e.message)}
 }
 function addRow(type){const data=curData();const cols=type==="employees"?EMP_COLS:type==="entries"?ENTRY_COLS:EXIT_COLS;const empty={};cols.forEach(c=>empty[c.key]="");if(type==="entries")empty.status="已入职";if(type==="exits")empty.city="上海";data[type].push(empty);save();renderAll()}
 function delRow(type,idx){curData()[type].splice(idx,1);save();renderAll()}
@@ -798,10 +801,17 @@ Object.values(state.months).forEach(data=>{if(data&&data.employees)data.employee
 save();
 }
 async function init(){
+setupTabs();
+document.getElementById("monthSel").addEventListener("change",e=>{state.currentMonth=e.target.value;ensureMonth(state.currentMonth);save();renderAll()});
+window.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
+document.getElementById("modalBg").addEventListener("click",e=>{if(e.target.id==="modalBg")closeModal()});
 var isCloud=window.location.protocol.startsWith("http")&&!window.location.search.includes("readonly");
 if(isCloud){
 try{
-var resp=await fetch("/api/data");
+var ctrl=new AbortController();
+var tid=setTimeout(function(){ctrl.abort()},8000);
+var resp=await fetch("/api/data",{signal:ctrl.signal});
+clearTimeout(tid);
 if(resp.ok){
 var d=await resp.json();
 if(d.months&&Object.keys(d.months).length>0){
@@ -819,7 +829,7 @@ if(!load()){state.currentMonth=curYM();ensureMonth(state.currentMonth)}
 initSample();
 }
 }catch(e){
-console.log("[CLOUD] Fetch failed, using localStorage");
+console.log("[CLOUD] Fetch failed or timed out, using localStorage: "+e.message);
 if(!load()){state.currentMonth=curYM();ensureMonth(state.currentMonth)}
 initSample();
 }
@@ -843,10 +853,7 @@ ensureMonth(state.currentMonth);
 ensureDepts();
 if(state._readonly)document.body.classList.add("readonly");
 document.getElementById("monthSel").value=state.currentMonth;
-document.getElementById("monthSel").addEventListener("change",e=>{state.currentMonth=e.target.value;ensureMonth(state.currentMonth);save();renderAll()});
-setupTabs();renderAll();
-window.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
-document.getElementById("modalBg").addEventListener("click",e=>{if(e.target.id==="modalBg")closeModal()});
+renderAll();
 }
 init();
 </script>
