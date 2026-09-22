@@ -117,6 +117,7 @@ body.readonly .readonly-hint{display:block!important}
 <button class="tab" data-t="exit">离职明细</button>
 <button class="tab" data-t="city">城市明细</button>
 <button class="tab" data-t="loading">Loading分析</button>
+<button class="tab" data-t="zc">上海樟晨分析</button>
 <button class="tab" data-t="threemonth">前三月对比</button>
 <button class="tab" data-t="settings">部门设置</button>
 </div>
@@ -128,6 +129,13 @@ body.readonly .readonly-hint{display:block!important}
 <div class="card-title">Loading分析 <span class="sub" id="dashLoadingSub"></span></div>
 <div class="kpi-row" id="dashLoadingKpi" style="margin-bottom:12px"></div>
 <div class="chart-wrap" style="height:200px"><canvas id="dashLoadingChart"></canvas></div>
+</div>
+</div>
+<div class="chart-row full">
+<div class="card" style="border-left:4px solid #0ea5e9">
+<div class="card-title">上海樟晨分析 <span class="sub" id="dashZcSub"></span></div>
+<div class="kpi-row" id="dashZcKpi" style="margin-bottom:12px"></div>
+<div class="chart-wrap" style="height:200px"><canvas id="dashZcChart"></canvas></div>
 </div>
 </div>
 <div class="chart-row">
@@ -188,6 +196,19 @@ body.readonly .readonly-hint{display:block!important}
 <div class="card"><div class="card-title">Loading环比分析 <span class="sub" id="loadingMomSub"></span></div><div class="table-wrap" id="loadingMomTable"></div></div>
 </div>
 </div>
+<div class="tab-panel" id="p-zc">
+<div class="kpi-row" id="zcKpiRow"></div>
+<div class="chart-row">
+<div class="card"><div class="card-title">上海樟晨城市分布</div><div class="chart-wrap"><canvas id="zcCityChart"></canvas></div></div>
+<div class="card"><div class="card-title">上海樟晨二级部门</div><div class="chart-wrap"><canvas id="zcDeptChart"></canvas></div></div>
+</div>
+<div class="chart-row full">
+<div class="card"><div class="card-title">上海樟晨人员明细</div><div class="table-wrap"><table id="zcTable"></table></div></div>
+</div>
+<div class="chart-row full">
+<div class="card"><div class="card-title">上海樟晨环比分析 <span class="sub" id="zcMomSub"></span></div><div class="table-wrap" id="zcMomTable"></div></div>
+</div>
+</div>
 <div class="tab-panel" id="p-threemonth">
 <div class="card" style="margin-bottom:16px"><div class="card-title">KPI对比 <span class="sub" id="tmKpiSub"></span></div><div class="table-wrap" id="tmKpiTable"></div></div>
 <div class="chart-row">
@@ -199,6 +220,9 @@ body.readonly .readonly-hint{display:block!important}
 </div>
 <div class="chart-row full">
 <div class="card" style="border-left:4px solid #8b5cf6"><div class="card-title">Loading分析对比 <span class="sub" id="tmLoadingSub"></span></div><div class="table-wrap" id="tmLoadingTable"></div></div>
+</div>
+<div class="chart-row full">
+<div class="card" style="border-left:4px solid #0ea5e9"><div class="card-title">上海樟晨分析对比 <span class="sub" id="tmZcSub"></span></div><div class="table-wrap" id="tmZcTable"></div></div>
 </div>
 <div class="chart-row full">
 <div class="card"><div class="card-title">入职离职对比</div><div class="chart-wrap"><canvas id="tmEntryExitChart"></canvas></div></div>
@@ -413,7 +437,33 @@ if(charts.dashLoading)charts.dashLoading.destroy();
 if(t===0){ctx.getContext("2d").clearRect(0,0,ctx.width,ctx.height);return}
 charts.dashLoading=new Chart(ctx,{type:"doughnut",data:{labels:cityD.map(x=>x.c),datasets:[{data:cityD.map(x=>x.n),backgroundColor:["#2563eb","#10b981","#f59e0b"],borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{datalabels:{color:'#fff',font:{weight:'bold',size:11},formatter:v=>v>0?v:''},legend:{position:"right",labels:{boxWidth:10,font:{size:10}}},tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw}人 (${t>0?(c.raw/t*100).toFixed(1):0}%)`}}}}});
 }
-function renderDashboard(){renderKPI();renderDashLoading();renderCityChart();renderCatChart();renderDeptActive();renderTrendChart();renderCrossTab();renderMoM()}
+function renderDashZc(){
+const cd=curData(),pd=prevData();const pm=prevMonth();
+const cur=zcEmps(cd),prev=zcEmps(pd);const m=state.currentMonth;
+const total=cur.length,active=cur.filter(e=>!e.exitDate).length;
+const ent=cur.filter(e=>e.joinDate&&String(e.joinDate).startsWith(m)).length;
+const ext=cur.filter(e=>e.exitDate&&String(e.exitDate).startsWith(m)).length;
+const net=ent-ext;
+const pt=prev.length,pe=pm?prev.filter(e=>e.joinDate&&String(e.joinDate).startsWith(pm)).length:0,px=pm?prev.filter(e=>e.exitDate&&String(e.exitDate).startsWith(pm)).length:0;
+document.getElementById("dashZcSub").textContent=pm?`${state.currentMonth} vs ${pm}`:"暂无上月";
+const items=[
+{label:"樟晨总人数",val:total,prev:pt,sub:"在职 "+active,cls:""},
+{label:"当月入职",val:ent,prev:pe,sub:"",cls:"ok"},
+{label:"当月离职",val:ext,prev:px,sub:"",cls:"err"},
+{label:"净增减",val:(net>=0?"+":"")+net,prev:((pe-px)>=0?"+":"")+(pe-px),sub:net>=0?"净增":"净减",cls:net>=0?"ok":"err"},
+];
+document.getElementById("dashZcKpi").innerHTML=items.map(i=>{
+const c=mom(i.val,i.prev);const prevStr=i.prev!==undefined?"vs "+i.prev:"暂无上月";
+return`<div class="kpi ${i.cls}" style="border-left-color:#0ea5e9"><div class="kpi-label">${i.label}</div><div class="kpi-value" style="font-size:22px">${i.val}</div><div class="kpi-sub">${momHTML(c)} · ${prevStr}</div></div>`}).join("");
+const cityD=CITIES.map(c=>({c,n:cur.filter(e=>e.city===c).length}));
+const otherN=cur.length-cityD.reduce((s,x)=>s+x.n,0);if(otherN>0)cityD.push({c:"其他",n:otherN});
+const ctx=document.getElementById("dashZcChart");if(!ctx)return;
+const t=cityD.reduce((s,x)=>s+x.n,0);
+if(charts.dashZc)charts.dashZc.destroy();
+if(t===0){ctx.getContext("2d").clearRect(0,0,ctx.width,ctx.height);return}
+charts.dashZc=new Chart(ctx,{type:"doughnut",data:{labels:cityD.map(x=>x.c),datasets:[{data:cityD.map(x=>x.n),backgroundColor:["#2563eb","#10b981","#f59e0b","#9ca3af"],borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{datalabels:{color:'#fff',font:{weight:'bold',size:11},formatter:v=>v>0?v:''},legend:{position:"right",labels:{boxWidth:10,font:{size:10}}},tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw}人 (${t>0?(c.raw/t*100).toFixed(1):0}%)`}}}}});
+}
+function renderDashboard(){renderKPI();renderDashLoading();renderDashZc();renderCityChart();renderCatChart();renderDeptActive();renderTrendChart();renderCrossTab();renderMoM()}
 function makeEmpCell(col,idx){
 const emp=curData().employees[idx];const v=emp?emp[col.key]||"":"";
 if(col.type==="dept")return`<select class="edit-input" onchange="updRow('employees',${idx},'dept1',this.value)"><option value="">选择</option>${state.deptMapping.map(m=>`<option value="${m.dept}"${v===m.dept?" selected":""}>${m.dept}</option>`).join("")}</select>`;
@@ -497,6 +547,8 @@ document.getElementById("citySummary").innerHTML=s;
 }
 function isLoadingDept(dept){return dept&&String(dept).toLowerCase().includes("loading")}
 function loadingEmps(data){if(!data)return[];return data.employees.filter(e=>isLoadingDept(e.dept1))}
+function isZcDept(dept){return dept&&String(dept).includes("樟晨")}
+function zcEmps(data){if(!data)return[];return data.employees.filter(e=>isZcDept(e.dept1))}
 function renderLoadingView(){
 const cd=curData(),pd=prevData();const pm=prevMonth();
 const cur=loadingEmps(cd),prev=loadingEmps(pd);
@@ -541,10 +593,56 @@ let mhtml="<table><thead><tr><th>指标</th><th>本月</th><th>上月</th><th>�
 rows.forEach(r=>{const c=mom(r.cur,r.prev);const pctStr=c.pct!==null&&c.pct!==0?(c.pct>0?"+":"")+c.pct.toFixed(1)+"%":c.dir==="flat"?"0%":c.dir==="new"?"—":"";mhtml+=`<tr><td>${r.label}</td><td style="text-align:center;font-weight:600">${r.cur}</td><td style="text-align:center;color:var(--g400)">${r.prev!==null?r.prev:"—"}</td><td>${momHTML(c)}</td><td style="text-align:center">${pctStr}</td></tr>`});
 mhtml+="</tbody></table>";document.getElementById("loadingMomTable").innerHTML=mhtml;
 }
+function renderZcView(){
+const cd=curData(),pd=prevData();const pm=prevMonth();
+const cur=zcEmps(cd),prev=zcEmps(pd);
+const m=state.currentMonth;
+const total=cur.length,active=cur.filter(e=>!e.exitDate).length,exited=cur.filter(e=>e.exitDate).length;
+const ent=cur.filter(e=>e.joinDate&&String(e.joinDate).startsWith(m)).length;
+const ext=cur.filter(e=>e.exitDate&&String(e.exitDate).startsWith(m)).length;
+const net=ent-ext;
+const pt=prev.length,pe=pm?prev.filter(e=>e.joinDate&&String(e.joinDate).startsWith(pm)).length:0,px=pm?prev.filter(e=>e.exitDate&&String(e.exitDate).startsWith(pm)).length:0;
+const pnet=pe-px;
+const items=[
+{label:"上海樟晨总人数",val:total,prev:pt,sub:"在职 "+active,cls:""},
+{label:"当月入职",val:ent,prev:pe,sub:"",cls:"ok"},
+{label:"当月离职",val:ext,prev:px,sub:"",cls:"err"},
+{label:"净增减",val:(net>=0?"+":"")+net,prev:(pnet>=0?"+":"")+pnet,sub:net>=0?"净增":"净减",cls:net>=0?"ok":"err"},
+];
+document.getElementById("zcKpiRow").innerHTML=items.map(i=>{
+const c=mom(i.val,i.prev);const prevStr=i.prev!==undefined?"vs 上月 "+i.prev:"暂无上月";
+return`<div class="kpi ${i.cls}" style="border-left-color:#0ea5e9"><div class="kpi-label">${i.label}</div><div class="kpi-value">${i.val}</div><div class="kpi-sub">${momHTML(c)} · ${prevStr}</div></div>`}).join("");
+const cityD=CITIES.map(c=>({c,n:cur.filter(e=>e.city===c).length}));
+const otherN=cur.length-cityD.reduce((s,x)=>s+x.n,0);if(otherN>0)cityD.push({c:"其他",n:otherN});
+const ctx1=document.getElementById("zcCityChart");
+if(ctx1){const t=cityD.reduce((s,x)=>s+x.n,0);if(charts.zcCity)charts.zcCity.destroy();
+if(t===0){ctx1.getContext("2d").clearRect(0,0,ctx1.width,ctx1.height)}
+else charts.zcCity=new Chart(ctx1,{type:"doughnut",data:{labels:cityD.map(x=>x.c),datasets:[{data:cityD.map(x=>x.n),backgroundColor:["#2563eb","#10b981","#f59e0b","#9ca3af"],borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{datalabels:{color:'#fff',font:{weight:'bold',size:13},formatter:v=>v>0?v:''},legend:{position:"right"},tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw}人 (${t>0?(c.raw/t*100).toFixed(1):0}%)`}}}}})}
+const subDepts={};cur.forEach(e=>{const d=e.dept2||e.dept1||"未分";subDepts[d]=(subDepts[d]||0)+1});
+const ctx2=document.getElementById("zcDeptChart");
+if(ctx2){if(charts.zcDept)charts.zcDept.destroy();const labels=Object.keys(subDepts),data=Object.values(subDepts);
+charts.zcDept=new Chart(ctx2,{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:["#0ea5e9","#8b5cf6","#10b981","#f59e0b","#ec4899","#14b8a6","#f97316"],borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{datalabels:{color:'#fff',font:{weight:'bold',size:13},formatter:v=>v>0?v:''},legend:{position:"right"}}}})}
+let html="<thead><tr><th class='idx'>#</th>";EMP_COLS.forEach(c=>html+=`<th>${c.label}</th>`);html+="<th>属性</th></tr></thead><tbody>";
+if(cur.length===0)html+='<tr><td colspan="12" class="empty">暂无上海樟晨人员。请确保数据中一级部门列包含"樟晨"</td></tr>';
+cur.forEach((e,i)=>{html+=`<tr><td class="idx">${i+1}</td>`;EMP_COLS.forEach(c=>html+=`<td>${e[c.key]||""}</td>`);html+=`<td class="auto">${getCat(e.dept1)}</td></tr>`});
+html+="</tbody>";document.getElementById("zcTable").innerHTML=html;
+document.getElementById("zcMomSub").textContent=pm?`本月 ${state.currentMonth} vs 上月 ${pm}`:"暂无上月数据";
+const rows=[
+{label:"上海樟晨总人数",cur:total,prev:pt},
+{label:"在职人数",cur:active,prev:prev.filter(e=>!e.exitDate).length},
+{label:"离职累计",cur:exited,prev:prev.filter(e=>e.exitDate).length},
+{label:"当月入职",cur:ent,prev:pe},
+{label:"当月离职",cur:ext,prev:px},
+{label:"净增减",cur:net,prev:pnet},
+];
+let zmhtml="<table><thead><tr><th>指标</th><th>本月</th><th>上月</th><th>环比变化</th><th>变化率</th></tr></thead><tbody>";
+rows.forEach(r=>{const c=mom(r.cur,r.prev);const pctStr=c.pct!==null&&c.pct!==0?(c.pct>0?"+":"")+c.pct.toFixed(1)+"%":c.dir==="flat"?"0%":c.dir==="new"?"—":"";zmhtml+=`<tr><td>${r.label}</td><td style="text-align:center;font-weight:600">${r.cur}</td><td style="text-align:center;color:var(--g400)">${r.prev!==null?r.prev:"—"}</td><td>${momHTML(c)}</td><td style="text-align:center">${pctStr}</td></tr>`});
+zmhtml+="</tbody></table>";document.getElementById("zcMomTable").innerHTML=zmhtml;
+}
 function renderThreeMonth(){
 const ms=availMonths().slice(-3);
 document.getElementById("tmKpiSub").textContent=ms.length?`（${ms.join(" / ")}）`:"";
-if(ms.length<1){document.getElementById("tmKpiTable").innerHTML='<table><tr><td class="empty">需要至少一个月数据</td></tr></table>';return}
+if(ms.length<1){document.getElementById("tmKpiTable").innerHTML='<table><tr><td class="empty">需要至少一个月数据</td></tr></table>';document.getElementById("tmLoadingTable").innerHTML="";document.getElementById("tmZcTable").innerHTML="";return}
 const allStats=ms.map(m=>stats(state.months[m],m));
 let kpiHtml="<table><thead><tr><th>指标</th>";
 ms.forEach(m=>kpiHtml+=`<th style="text-align:center">${m}</th>`);
@@ -591,6 +689,16 @@ var lMetrics=[{label:"Loading总人数",key:"total"},{label:"在职人数",key:"
 lMetrics.forEach(function(mc){lHtml+='<tr><td>'+mc.label+'</td>';loadingStats.forEach(function(d){lHtml+='<td style="text-align:center;font-weight:600">'+d[mc.key]+'</td>'});if(ms.length>=2){var cur=loadingStats[loadingStats.length-1][mc.key];var prev=loadingStats[loadingStats.length-2][mc.key];lHtml+='<td style="text-align:center">'+momHTML(mom(cur,prev))+'</td>'}lHtml+="</tr>"});
 lHtml+="</tbody></table>";
 document.getElementById("tmLoadingTable").innerHTML=lHtml;
+var zcStats=ms.map(function(m){var d=state.months[m];var ze=d.employees.filter(function(e){return isZcDept(e.dept1)});return{total:ze.length,active:ze.filter(function(e){return !e.exitDate}).length,entries:ze.filter(function(e){return e.joinDate&&String(e.joinDate).startsWith(m)}).length,exits:ze.filter(function(e){return e.exitDate&&String(e.exitDate).startsWith(m)}).length}});
+document.getElementById("tmZcSub").textContent=ms.length?("（"+ms.join(" / ")+"）"):"";
+var zHtml="<table><thead><tr><th>指标</th>";
+ms.forEach(function(m){zHtml+='<th style="text-align:center">'+m+'</th>'});
+if(ms.length>=2)zHtml+='<th style="text-align:center">环比</th>';
+zHtml+="</tr></thead><tbody>";
+var zMetrics=[{label:"上海樟晨总人数",key:"total"},{label:"在职人数",key:"active"},{label:"当月入职",key:"entries"},{label:"当月离职",key:"exits"}];
+zMetrics.forEach(function(mc){zHtml+='<tr><td>'+mc.label+'</td>';zcStats.forEach(function(d){zHtml+='<td style="text-align:center;font-weight:600">'+d[mc.key]+'</td>'});if(ms.length>=2){var cur=zcStats[zcStats.length-1][mc.key];var prev=zcStats[zcStats.length-2][mc.key];zHtml+='<td style="text-align:center">'+momHTML(mom(cur,prev))+'</td>'}zHtml+="</tr>"});
+zHtml+="</tbody></table>";
+document.getElementById("tmZcTable").innerHTML=zHtml;
 var ctx3=document.getElementById("tmEntryExitChart");if(ctx3){if(charts.tmEntryExit)charts.tmEntryExit.destroy();
 var entData=ms.map(function(m){return stats(state.months[m],m).entries});
 var extData=ms.map(function(m){return stats(state.months[m],m).exits});
@@ -611,6 +719,7 @@ else if(active==="entry")renderEntryTable();
 else if(active==="exit")renderExitTable();
 else if(active==="city")renderCityView();
 else if(active==="loading")renderLoadingView();
+else if(active==="zc")renderZcView();
 else if(active==="threemonth")renderThreeMonth();
 else if(active==="settings")renderSettings();
 }catch(e){console.error("renderAll error:",e);toast("渲染出错: "+e.message)}
@@ -759,8 +868,8 @@ async function shareSystem(){
 const data={months:state.months,currentMonth:state.currentMonth,deptMapping:state.deptMapping};
 const dataStr=JSON.stringify(data).replace(/</g,"\\u003c");
 const clone=document.documentElement.cloneNode(true);
-["kpiRow","dashLoadingKpi","deptActiveTable","crossTab","momTable","empTable","entryTable","entrySummary","exitTable","exitSummary","cityTable","citySummary","loadingKpiRow","loadingTable","loadingMoMTable","deptMapTable","monthInfo","tmKpiTable","tmDeptTable","tmLoadingTable"].forEach(id=>{const el=clone.querySelector("#"+id);if(el)el.innerHTML=""});
-["cityChart","catChart","trendChart","dashLoadingChart","loadingCityChart","loadingDeptChart","tmCityChart","tmCatChart","tmEntryExitChart"].forEach(id=>{const el=clone.querySelector("#"+id);if(el){const nc=document.createElement("canvas");nc.id=id;el.parentNode.replaceChild(nc,el)}});
+["kpiRow","dashLoadingKpi","dashZcKpi","deptActiveTable","crossTab","momTable","empTable","entryTable","entrySummary","exitTable","exitSummary","cityTable","citySummary","loadingKpiRow","loadingTable","loadingMoMTable","zcKpiRow","zcTable","zcMomTable","deptMapTable","monthInfo","tmKpiTable","tmDeptTable","tmLoadingTable","tmZcTable"].forEach(id=>{const el=clone.querySelector("#"+id);if(el)el.innerHTML=""});
+["cityChart","catChart","trendChart","dashLoadingChart","dashZcChart","loadingCityChart","loadingDeptChart","zcCityChart","zcDeptChart","tmCityChart","tmCatChart","tmEntryExitChart"].forEach(id=>{const el=clone.querySelector("#"+id);if(el){const nc=document.createElement("canvas");nc.id=id;el.parentNode.replaceChild(nc,el)}});
 clone.querySelectorAll(".toast").forEach(e=>e.remove());
 const mb=clone.querySelector("#modalBg");if(mb)mb.className="modal-bg";
 clone.querySelectorAll("script#embedded-data").forEach(s=>s.remove());
